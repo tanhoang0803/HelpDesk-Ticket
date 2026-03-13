@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  PENDING
+  RESOLVED
+  VERIFIED
+  REOPENED
+  ESCALATED
+  CANCELLED
+  CLOSED
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum AgentRole {
+  ADMIN
+  SUPERVISOR
+  AGENT
+  REQUESTER
+}
+
+enum TrackingAction {
+  CREATED
+  ASSIGNED
+  REASSIGNED
+  IN_PROGRESS
+  PENDING
+  COMMENTED
+  ESCALATED
+  RESOLVED
+  VERIFIED
+  REOPENED
+  CANCELLED
+  CLOSED
+}
+
+// ─────────────────────────────────────────────
+// CORE MODELS
+// ─────────────────────────────────────────────
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  agents       Agent[]
+  tickets      Ticket[]
+  categories   Category[]
+  trackingLogs TrackingLog[]
+
+  @@map("departments")
+}
+
+model Agent {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+  role         AgentRole  @default(AGENT)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  assignedTickets Ticket[]
+  trackingLogs    TrackingLog[]
+  refreshTokens   RefreshToken[]
+  attachments     Attachment[]
+
+  @@index([departmentId])
+  @@index([role])
+  @@index([isActive])
+  @@map("agents")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@map("refresh_tokens")
+}
+
+model Category {
+  id           String      @id @default(uuid())
+  name         String
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  createdAt    DateTime    @default(now())
+
+  tickets Ticket[]
+
+  @@index([departmentId])
+  @@map("categories")
+}
+
+model TicketType {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  tickets Ticket[]
+
+  @@map("ticket_types")
+}
+
+model Ticket {
+  id           String       @id @default(uuid())
+  ticketNumber String       @unique
+  title        String
+  description  String
+  department   Department   @relation(fields: [departmentId], references: [id])
+  departmentId String
+  assignedTo   Agent?       @relation(fields: [assignedToId], references: [id])
+  assignedToId String?
+  category     Category     @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  ticketTypeId String
+  priority     Priority     @default(MEDIUM)
+  status       TicketStatus @default(OPEN)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  trackingLogs TrackingLog[]
+  attachments  Attachment[]
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([departmentId])
+  @@index([createdAt])
+  @@index([priority])
+  @@index([deletedAt])
+  @@map("tickets")
+}
+
+model TrackingLog {
+  id           String         @id @default(uuid())
+  ticket       Ticket         @relation(fields: [ticketId], references: [id])
+  ticketId     String
+  action       TrackingAction
+  comment      String?
+  department   Department?    @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  agent        Agent?         @relation(fields: [agentId], references: [id])
+  agentId      String?
+  verified     Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+
+  @@index([ticketId])
+  @@index([agentId])
+  @@index([createdAt])
+  @@map("tracking_logs")
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  ticket       Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId     String
+  uploadedBy   Agent    @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+
+  @@index([ticketId])
+  @@map("attachments")
+}
+
+model TicketCounter {
+  id   String @id @default(uuid())
+  year Int
+  seq  Int    @default(0)
+
+  @@unique([year])
+  @@map("ticket_counters")
+}
