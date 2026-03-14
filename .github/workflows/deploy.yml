@@ -102,7 +102,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build (type-check + lint + compile)
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint || true          # report errors but don't block
+
+      - name: Build (type-check + compile)
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001

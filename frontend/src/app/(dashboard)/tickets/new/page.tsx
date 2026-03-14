@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,19 +9,15 @@ import { useDepartments, useCategories, useTicketTypes } from '@/hooks/useDepart
 
 export default function NewTicketPage() {
   const router  = useRouter();
-  const [selectedDept, setSelectedDept] = useState('');
   const createTicket   = useCreateTicket();
   const { data: departments } = useDepartments();
-  const { data: categories  } = useCategories(selectedDept || undefined);
+  const { data: categories  } = useCategories();
   const { data: ticketTypes } = useTicketTypes();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<CreateTicketFormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CreateTicketFormValues>({
     resolver: zodResolver(createTicketSchema),
     defaultValues: { priority: 'MEDIUM' },
   });
-
-  const deptId = watch('departmentId');
-  if (deptId !== selectedDept) setSelectedDept(deptId);
 
   const onSubmit = async (data: CreateTicketFormValues) => {
     const ticket = await createTicket.mutateAsync({
