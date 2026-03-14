@@ -1,21 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { ticketsService } from '@/services/tickets.service';
 import { ListTicketsParams, CreateTicketInput } from '@/types/ticket.types';
 
-export const useTickets = (params: ListTicketsParams = {}) =>
-  useQuery({
+export const useTickets = (params: ListTicketsParams = {}) => {
+  const { status } = useSession();
+  return useQuery({
     queryKey: ['tickets', params],
     queryFn:  () => ticketsService.getAll(params),
+    enabled:  status === 'authenticated',
     staleTime: 30_000,
   });
+};
 
-export const useTicket = (id: string) =>
-  useQuery({
+export const useTicket = (id: string) => {
+  const { status } = useSession();
+  return useQuery({
     queryKey: ['ticket', id],
     queryFn:  () => ticketsService.getById(id),
-    enabled:  !!id,
+    enabled:  status === 'authenticated' && !!id,
     staleTime: 15_000,
   });
+};
 
 export const useCreateTicket = () => {
   const qc = useQueryClient();

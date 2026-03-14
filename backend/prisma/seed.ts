@@ -49,17 +49,22 @@ async function main() {
   console.log(`✅ ${ticketTypes.length} ticket types seeded`);
 
   // ─── Categories ────────────────────────────────────────────────
+  // Delete old non-UUID category rows if they exist
+  await prisma.category.deleteMany({
+    where: { id: { in: ['cat-software-001','cat-hardware-001','cat-network-001','cat-access-001','cat-service-001','cat-payroll-001','cat-onboard-001','cat-infra-001','cat-security-001','cat-other-001'] } },
+  });
+
   const categories = await Promise.all([
-    prisma.category.upsert({ where: { id: 'cat-software-001' }, update: {}, create: { id: 'cat-software-001', name: 'Software Issue' } }),
-    prisma.category.upsert({ where: { id: 'cat-hardware-001' }, update: {}, create: { id: 'cat-hardware-001', name: 'Hardware Issue' } }),
-    prisma.category.upsert({ where: { id: 'cat-network-001'  }, update: {}, create: { id: 'cat-network-001',  name: 'Network Issue' } }),
-    prisma.category.upsert({ where: { id: 'cat-access-001'  }, update: {}, create: { id: 'cat-access-001',  name: 'Account Access' } }),
-    prisma.category.upsert({ where: { id: 'cat-service-001' }, update: {}, create: { id: 'cat-service-001', name: 'Service Request' } }),
-    prisma.category.upsert({ where: { id: 'cat-payroll-001' }, update: {}, create: { id: 'cat-payroll-001', name: 'Payroll Issue' } }),
-    prisma.category.upsert({ where: { id: 'cat-onboard-001' }, update: {}, create: { id: 'cat-onboard-001', name: 'Onboarding' } }),
-    prisma.category.upsert({ where: { id: 'cat-infra-001'   }, update: {}, create: { id: 'cat-infra-001',   name: 'Infrastructure Request' } }),
-    prisma.category.upsert({ where: { id: 'cat-security-001'}, update: {}, create: { id: 'cat-security-001',name: 'Security Concern' } }),
-    prisma.category.upsert({ where: { id: 'cat-other-001'   }, update: {}, create: { id: 'cat-other-001',   name: 'Other' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0001-4000-8000-000000000001' }, update: {}, create: { id: 'a1b2c3d4-0001-4000-8000-000000000001', name: 'Software Issue' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0002-4000-8000-000000000002' }, update: {}, create: { id: 'a1b2c3d4-0002-4000-8000-000000000002', name: 'Hardware Issue' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0003-4000-8000-000000000003' }, update: {}, create: { id: 'a1b2c3d4-0003-4000-8000-000000000003', name: 'Network Issue' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0004-4000-8000-000000000004' }, update: {}, create: { id: 'a1b2c3d4-0004-4000-8000-000000000004', name: 'Account Access' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0005-4000-8000-000000000005' }, update: {}, create: { id: 'a1b2c3d4-0005-4000-8000-000000000005', name: 'Service Request' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0006-4000-8000-000000000006' }, update: {}, create: { id: 'a1b2c3d4-0006-4000-8000-000000000006', name: 'Payroll Issue' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0007-4000-8000-000000000007' }, update: {}, create: { id: 'a1b2c3d4-0007-4000-8000-000000000007', name: 'Onboarding' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0008-4000-8000-000000000008' }, update: {}, create: { id: 'a1b2c3d4-0008-4000-8000-000000000008', name: 'Infrastructure Request' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0009-4000-8000-000000000009' }, update: {}, create: { id: 'a1b2c3d4-0009-4000-8000-000000000009', name: 'Security Concern' } }),
+    prisma.category.upsert({ where: { id: 'a1b2c3d4-0010-4000-8000-000000000010' }, update: {}, create: { id: 'a1b2c3d4-0010-4000-8000-000000000010', name: 'Other' } }),
   ]);
 
   console.log(`✅ ${categories.length} categories seeded`);
