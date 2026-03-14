@@ -1,108 +1,95 @@
-name: CI/CD — Railway + Vercel
+name: CI — Deploy to Railway & Vercel
 
 on:
   push:
     branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:       # allow manual trigger from Actions tab
 
-# ─────────────────────────────────────────────
-# CI — Backend (lint + build check)
-# ─────────────────────────────────────────────
+# Only one deployment runs at a time; queued runs wait, not cancel
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 jobs:
-  ci-backend:
-    name: Backend CI
+  # ── Job 1: Validate ─────────────────────────────────────
+  validate:
+    name: Validate Backend & Frontend
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Check required files exist
+        run: |
+          echo "Checking project files..."
+          test -f backend/package.json          && echo "✅ backend/package.json"          || (echo "❌ backend/package.json missing"          && exit 1)
+          test -f backend/prisma/schema.prisma  && echo "✅ backend/prisma/schema.prisma"  || (echo "❌ backend/prisma/schema.prisma missing"  && exit 1)
+          test -f frontend/package.json         && echo "✅ frontend/package.json"         || (echo "❌ frontend/package.json missing"         && exit 1)
+          test -f frontend/next.config.mjs      && echo "✅ frontend/next.config.mjs"      || (echo "❌ frontend/next.config.mjs missing"      && exit 1)
+          echo "All required files present."
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
 
-      - name: Install dependencies
+      # ── Backend ──────────────────────────────────────────
+      - name: Install backend dependencies
+        working-directory: backend
         run: npm ci
 
       - name: Generate Prisma client
+        working-directory: backend
         run: npx prisma generate
 
-      - name: Build
-        run: npm run build
+      - name: Build backend
+        working-directory: backend
+        run: npm run build && echo "✅ Backend build OK"
 
-  # ─────────────────────────────────────────────
-  # CI — Frontend (type-check + build)
-  # ─────────────────────────────────────────────
-  ci-frontend:
-    name: Frontend CI
-    runs-on: ubuntu-latest
-    defaults:
-      run:
+      # ── Frontend ─────────────────────────────────────────
+      - name: Install frontend dependencies
         working-directory: frontend
-
-    env:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
         run: npm ci
 
-      - name: Build (includes type-check + lint)
-        run: npm run build
+      - name: Build frontend (type-check + lint included)
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+        run: npm run build && echo "✅ Frontend build OK"
 
-  # ─────────────────────────────────────────────
-  # CD — Deploy Backend to Railway
-  # Only on push to master, after CI passes
-  # ─────────────────────────────────────────────
-  deploy-backend:
-    name: Deploy Backend to Railway
+  # ── Job 2: Deploy ────────────────────────────────────────
+  deploy:
+    name: Deploy to Railway & Vercel
     runs-on: ubuntu-latest
-    needs: [ci-backend, ci-frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: validate          # only deploy if validate passes
+
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
 
     steps:
-      - name: Trigger Railway deploy
+      - name: Deploy backend → Railway
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK }}")
           echo "Railway response: $STATUS"
           if [[ "$STATUS" -lt 200 || "$STATUS" -ge 300 ]]; then
-            echo "Railway deploy hook failed with status $STATUS"
+            echo "❌ Railway deploy hook failed with status $STATUS"
             exit 1
           fi
-          echo "Railway deploy triggered successfully"
+          echo "✅ Railway deploy triggered"
 
-  # ─────────────────────────────────────────────
-  # CD — Deploy Frontend to Vercel
-  # Only on push to master, after CI passes
-  # ─────────────────────────────────────────────
-  deploy-frontend:
-    name: Deploy Frontend to Vercel
-    runs-on: ubuntu-latest
-    needs: [ci-backend, ci-frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-
-    steps:
-      - name: Trigger Vercel deploy
+      - name: Deploy frontend → Vercel
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}")
           echo "Vercel response: $STATUS"
           if [[ "$STATUS" -lt 200 || "$STATUS" -ge 300 ]]; then
-            echo "Vercel deploy hook failed with status $STATUS"
+            echo "❌ Vercel deploy hook failed with status $STATUS"
             exit 1
           fi
-          echo "Vercel deploy triggered successfully"
+          echo "✅ Vercel deploy triggered"
+
+      - name: Print live URL
+        run: echo "🚀 Live at ${{ vars.PRODUCTION_URL }}"
