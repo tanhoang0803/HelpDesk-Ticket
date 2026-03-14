@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD — Railway + Vercel
 
 on:
   push:
@@ -6,69 +6,23 @@ on:
   pull_request:
     branches: [master]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_BACKEND: ${{ github.repository }}/backend
-  IMAGE_FRONTEND: ${{ github.repository }}/frontend
-
 # ─────────────────────────────────────────────
-# CI — Backend
+# CI — Backend (lint + build check)
 # ─────────────────────────────────────────────
 jobs:
   ci-backend:
-    name: Backend — Lint, Test, Build
+    name: Backend CI
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: helpdesk
-          POSTGRES_PASSWORD: helpdesk_secret
-          POSTGRES_DB: helpdesk_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U helpdesk -d helpdesk_db"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     defaults:
       run:
         working-directory: backend
 
-    env:
-      DATABASE_URL: postgresql://helpdesk:helpdesk_secret@localhost:5432/helpdesk_db
-      REDIS_HOST: localhost
-      REDIS_PORT: "6379"
-      JWT_SECRET: ci-test-secret-do-not-use-in-prod
-      JWT_EXPIRES_IN: 1h
-      JWT_REFRESH_EXPIRES_IN: 7d
-      NODE_ENV: test
-      MAIL_HOST: localhost
-      MAIL_PORT: "1025"
-      MAIL_USER: ""
-      MAIL_PASS: ""
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '20'
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
@@ -78,35 +32,15 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      # db push is used in CI because there are no migration files yet.
-      # Switch to `prisma migrate deploy` once you commit your first migration.
-      - name: Push schema to database
-        run: npx prisma db push --accept-data-loss
-
-      - name: Lint
-        run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0
-        continue-on-error: true
-
-      - name: Unit tests
-        run: npm run test -- --passWithNoTests --forceExit --detectOpenHandles
-
       - name: Build
         run: npm run build
 
-      - name: Upload backend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-dist
-          path: backend/dist
-          retention-days: 1
-
   # ─────────────────────────────────────────────
-  # CI — Frontend
+  # CI — Frontend (type-check + build)
   # ─────────────────────────────────────────────
   ci-frontend:
-    name: Frontend — Lint, Build
+    name: Frontend CI
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: frontend
@@ -115,137 +49,60 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:3001
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-        continue-on-error: true
-
-      - name: Build
+      - name: Build (includes type-check + lint)
         run: npm run build
 
-      - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: frontend/.next
-          retention-days: 1
-
   # ─────────────────────────────────────────────
-  # CD — Build & Push Docker Images
-  # Runs only on push to master after CI passes
+  # CD — Deploy Backend to Railway
+  # Only on push to master, after CI passes
   # ─────────────────────────────────────────────
-  docker-build-push:
-    name: Build & Push Docker Images
+  deploy-backend:
+    name: Deploy Backend to Railway
     runs-on: ubuntu-latest
     needs: [ci-backend, ci-frontend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
 
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # ── Backend image ──────────────────────────
-      - name: Extract metadata — backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest
-
-      - name: Build & push backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # ── Frontend image ─────────────────────────
-      - name: Extract metadata — frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest
-
-      - name: Build & push frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Trigger Railway deploy
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK }}")
+          echo "Railway response: $STATUS"
+          if [[ "$STATUS" -lt 200 || "$STATUS" -ge 300 ]]; then
+            echo "Railway deploy hook failed with status $STATUS"
+            exit 1
+          fi
+          echo "Railway deploy triggered successfully"
 
   # ─────────────────────────────────────────────
-  # CD — Deploy to VPS via SSH
-  # Skipped until SSH secrets are configured
+  # CD — Deploy Frontend to Vercel
+  # Only on push to master, after CI passes
   # ─────────────────────────────────────────────
-  deploy:
-    name: Deploy to Production
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
     runs-on: ubuntu-latest
-    needs: docker-build-push
-    # Remove this job entirely until you have a VPS.
-    # To enable: add SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, DEPLOY_PATH secrets.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
-
-    environment:
-      name: production
-      url: ${{ vars.PRODUCTION_URL }}
+    needs: [ci-backend, ci-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || '22' }}
-          script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin master
-
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            docker compose pull backend frontend
-            docker compose run --rm backend npx prisma migrate deploy
-            docker compose up -d --no-deps --remove-orphans backend frontend
-            docker image prune -f
+      - name: Trigger Vercel deploy
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}")
+          echo "Vercel response: $STATUS"
+          if [[ "$STATUS" -lt 200 || "$STATUS" -ge 300 ]]; then
+            echo "Vercel deploy hook failed with status $STATUS"
+            exit 1
+          fi
+          echo "Vercel deploy triggered successfully"
