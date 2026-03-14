@@ -16,9 +16,8 @@ export default function NewTicketPage() {
   const { data: categories  } = useCategories(selectedDept || undefined);
   const { data: ticketTypes } = useTicketTypes();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<any>({
-    resolver: zodResolver(createTicketSchema) as any,
+  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<CreateTicketFormValues>({
+    resolver: zodResolver(createTicketSchema),
     defaultValues: { priority: 'MEDIUM' },
   });
 

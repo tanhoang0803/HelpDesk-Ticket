@@ -19,13 +19,13 @@ export default function AdminTicketTypesPage() {
   const createMut = useMutation({
     mutationFn: () => ticketTypesService.create({ name }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ticket-types'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const updateMut = useMutation({
     mutationFn: () => ticketTypesService.update((modal as TicketType).id, { name }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ticket-types'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const deleteMut = useMutation({
@@ -79,7 +79,7 @@ export default function AdminTicketTypesPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">{isEditing ? 'Edit Ticket Type' : 'New Ticket Type'}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); isEditing ? updateMut.mutate() : createMut.mutate(); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); if (isEditing) { updateMut.mutate(); } else { createMut.mutate(); } }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input value={name} onChange={(e) => setName(e.target.value)}

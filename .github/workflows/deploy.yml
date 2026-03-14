@@ -54,11 +54,11 @@ jobs:
         working-directory: backend
         run: npx prisma generate
 
-      - name: Push schema to database
+      - name: Run migrations
         working-directory: backend
         env:
           DATABASE_URL: postgresql://helpdesk:helpdesk_secret@localhost:5432/helpdesk_db
-        run: npx prisma db push --accept-data-loss && echo "✅ Database schema OK"
+        run: npx prisma migrate deploy && echo "✅ Database migrations OK"
 
       - name: Run unit tests
         working-directory: backend
@@ -67,6 +67,9 @@ jobs:
           JWT_SECRET: ci-secret
           JWT_EXPIRES_IN: 1h
           JWT_REFRESH_EXPIRES_IN: 7d
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          NODE_ENV: test
         run: npm run test -- --passWithNoTests --forceExit && echo "✅ Tests passed"
 
       - name: Build

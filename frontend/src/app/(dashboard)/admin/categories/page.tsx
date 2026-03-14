@@ -26,13 +26,13 @@ export default function AdminCategoriesPage() {
   const createMut = useMutation({
     mutationFn: () => categoriesService.create({ name: form.name, departmentId: form.departmentId || undefined }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['categories-all'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const updateMut = useMutation({
     mutationFn: () => categoriesService.update((modal as Category).id, { name: form.name, departmentId: form.departmentId || undefined }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['categories-all'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const deleteMut = useMutation({
@@ -90,7 +90,7 @@ export default function AdminCategoriesPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">{isEditing ? 'Edit Category' : 'New Category'}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); isEditing ? updateMut.mutate() : createMut.mutate(); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); if (isEditing) { updateMut.mutate(); } else { createMut.mutate(); } }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}

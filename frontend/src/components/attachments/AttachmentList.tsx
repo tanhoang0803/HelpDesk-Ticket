@@ -30,8 +30,8 @@ interface Props {
 
 export function AttachmentList({ ticketId, attachments }: Props) {
   const { data: session } = useSession();
-  const role = (session?.user as any)?.role;
-  const userId = (session?.user as any)?.id;
+  const role = session?.user?.role;
+  const userId = session?.user?.id;
   const deleteAttachment = useDeleteAttachment(ticketId);
 
   if (attachments.length === 0) {

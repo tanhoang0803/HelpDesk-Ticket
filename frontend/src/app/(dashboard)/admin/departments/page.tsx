@@ -22,13 +22,13 @@ export default function AdminDepartmentsPage() {
   const createMut = useMutation({
     mutationFn: () => departmentsService.create({ name: form.name, description: form.description || undefined }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['departments'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const updateMut = useMutation({
     mutationFn: () => departmentsService.update((modal as Department).id, { name: form.name, description: form.description || undefined }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['departments'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const deleteMut = useMutation({
@@ -43,7 +43,7 @@ export default function AdminDepartmentsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    isEditing ? updateMut.mutate() : createMut.mutate();
+    if (isEditing) { updateMut.mutate(); } else { createMut.mutate(); }
   };
 
   return (

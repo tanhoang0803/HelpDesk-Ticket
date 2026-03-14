@@ -31,9 +31,9 @@ export default function AdminAgentsPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: () => agentsService.create(form as any),
+    mutationFn: () => agentsService.create(form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['agents'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const updateMut = useMutation({
@@ -41,7 +41,7 @@ export default function AdminAgentsPage() {
       name: form.name, departmentId: form.departmentId, role: form.role,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['agents'] }); closeModal(); },
-    onError: (e: any) => setErr(e?.response?.data?.error?.message ?? 'Error'),
+    onError: (e: Error) => setErr(e.message),
   });
 
   const deactivateMut = useMutation({
@@ -60,7 +60,7 @@ export default function AdminAgentsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    isEditing ? updateMut.mutate() : createMut.mutate();
+    if (isEditing) { updateMut.mutate(); } else { createMut.mutate(); }
   };
 
   return (

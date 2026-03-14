@@ -8,8 +8,8 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(async (config) => {
   const session = await getSession();
-  if ((session as any)?.accessToken) {
-    config.headers.Authorization = `Bearer ${(session as any).accessToken}`;
+  if (session?.accessToken) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
   }
   return config;
 });

@@ -10,12 +10,10 @@ import { AttachmentUpload } from '@/components/attachments/AttachmentUpload';
 import { formatDateTime } from '@/lib/utils/date';
 import { ALLOWED_TRANSITIONS, STATUS_LABELS } from '@/lib/utils/ticket-status';
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
   const { data: ticket, isLoading, error } = useTicket(params.id);
   const { data: attachments = [] } = useAttachments(params.id);
-  const { data: session } = useSession();
   const transition = useTransitionTicket(params.id);
   const addComment = useAddComment(params.id);
   const [comment,           setComment]           = useState('');
