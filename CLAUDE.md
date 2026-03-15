@@ -1,5 +1,48 @@
 # CLAUDE.md
 
+## Local Development Setup
+
+### Prerequisites
+- Docker Desktop running
+- Node.js 18+
+
+### 1. Start infrastructure (PostgreSQL on port 5433 + Redis)
+```bash
+docker-compose up -d
+```
+
+### 2. Backend
+```bash
+cd backend
+npx prisma migrate dev --name init
+npx prisma db seed
+npm run start:dev
+```
+
+### 3. Frontend (new terminal)
+```bash
+cd frontend
+npm run dev
+```
+
+### URLs
+| Service       | URL                              |
+|---------------|----------------------------------|
+| Frontend      | http://localhost:3000            |
+| Backend API   | http://localhost:3001/api        |
+| Swagger docs  | http://localhost:3001/api/docs   |
+
+### Default credentials
+| Role       | Email                        | Password    |
+|------------|------------------------------|-------------|
+| Admin      | admin@helpdesk.com           | Admin@1234  |
+| Supervisor | supervisor@helpdesk.com      | Super@1234  |
+| Agent      | agent@helpdesk.com           | Agent@1234  |
+
+> **Note:** PostgreSQL runs on port **5433** (not 5432) to avoid conflict with any local PostgreSQL installation.
+
+---
+
 ## Project Purpose
 
 This file guides AI-assisted development for the **Helpdesk Ticketing System** — a production-grade, multi-department support platform.

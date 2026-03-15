@@ -238,29 +238,50 @@ helpdesk-ticketing/
 
 ## Getting Started
 
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- Node.js 18+
+
+### 1. Clone the repository
 ```bash
-# Clone repository
-git clone <repo-url>
-cd helpdesk-ticketing
-
-# Configure environment
-cp .env.example .env
-
-# Start services
-docker-compose up -d
-
-# Run migrations
-cd backend && npx prisma migrate dev
-
-# Seed database
-npx prisma db seed
-
-# Start frontend
-cd ../frontend && npm run dev
-
-# Start backend
-cd ../backend && npm run start:dev
+git clone https://github.com/tanhoang0803/HelpDesk-Ticket.git
+cd HelpDesk-Ticket
 ```
+
+### 2. Start infrastructure
+```bash
+docker-compose up -d
+```
+> PostgreSQL runs on port **5433** to avoid conflicts with local PostgreSQL installations. Redis runs on port 6379.
+
+### 3. Set up and start the backend
+```bash
+cd backend
+npx prisma migrate dev --name init
+npx prisma db seed
+npm run start:dev
+```
+
+### 4. Start the frontend (new terminal)
+```bash
+cd frontend
+npm run dev
+```
+
+### 5. Open the app
+| Service      | URL                             |
+|--------------|---------------------------------|
+| Frontend     | http://localhost:3000           |
+| Backend API  | http://localhost:3001/api       |
+| Swagger docs | http://localhost:3001/api/docs  |
+
+### Default login credentials
+
+| Role       | Email                     | Password   |
+|------------|---------------------------|------------|
+| Admin      | admin@helpdesk.com        | Admin@1234 |
+| Supervisor | supervisor@helpdesk.com   | Super@1234 |
+| Agent      | agent@helpdesk.com        | Agent@1234 |
 
 ---
 
