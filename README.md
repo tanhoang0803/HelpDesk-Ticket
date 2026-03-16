@@ -71,6 +71,31 @@ Edge states:
 | Medium   | 1 business day |
 | Low      | 3 business days|
 
+### 8. Analytics Dashboard *(Admin & Supervisor only)*
+
+A live metrics dashboard available at `/admin/analytics`. Provides organization-wide visibility into ticket operations.
+
+**Filters:** date range presets (7 days / 30 days / 90 days / this month), custom date range, department, and time granularity (day / week / month).
+
+| Widget                    | Type             | Description                                                    |
+|---------------------------|------------------|----------------------------------------------------------------|
+| Open Tickets              | KPI card         | Total tickets in any active status                             |
+| Created Today / Week / Month | KPI cards     | Volume counters for quick triage                               |
+| Resolution Rate           | KPI card         | % of tickets resolved within the selected range                |
+| Avg Resolution Time       | KPI card         | Mean hours from creation to resolved in the selected range     |
+| Ticket Volume             | Bar chart        | Tickets created per time bucket                                |
+| Status Distribution       | Donut chart      | Current count per ticket status                                |
+| Priority Breakdown        | Horizontal bar   | Ticket count and % by priority                                 |
+| Resolution Time Trend     | Area chart       | Average hours from creation → resolved over time               |
+| Department Breakdown      | Horizontal bar   | Ticket volume per department                                   |
+| Agent Load                | Sortable table   | Per-agent: active assigned count, resolved in range, avg resolution time |
+
+**Architecture notes:**
+- All data sourced from existing `Ticket` and `TrackingLog` tables — no new schema required
+- Resolution time computed from `TrackingLog` (CREATED → RESOLVED), not `updatedAt`, for accuracy
+- In-memory TTL cache per endpoint (2 min for KPIs, 5–15 min for charts) protects the database
+- Raw SQL (`$queryRawUnsafe`) used only for `DATE_TRUNC` time-bucket aggregations; all values are parameterized
+
 ---
 
 ## Ticket Data Structure
@@ -124,10 +149,11 @@ Tracking Log:
 | Layer        | Technology                       |
 |--------------|----------------------------------|
 | Framework    | Next.js 14 (App Router)          |
-| Styling      | TailwindCSS + shadcn/ui          |
+| Styling      | TailwindCSS                      |
 | State        | Zustand + TanStack Query         |
 | Forms        | React Hook Form + Zod            |
 | Auth         | NextAuth.js                      |
+| Charts       | Recharts                         |
 
 ### Backend
 | Layer        | Technology                       |
@@ -164,43 +190,68 @@ helpdesk-ticketing/
 │
 ├── frontend/                         # Next.js App
 │   ├── app/
-│   │   ├── (auth)/                   # Login, register
-│   │   ├── dashboard/                # Agent/admin dashboard
-│   │   ├── tickets/                  # Ticket CRUD views
-│   │   └── admin/                    # Admin panel
+│   │   ├── (auth)/                   # Login
+│   │   ├── (dashboard)/
+│   │   │   ├── dashboard/            # Agent/admin home
+│   │   │   ├── tickets/              # Ticket CRUD views
+│   │   │   └── admin/
+│   │   │       ├── analytics/        # Analytics dashboard ← NEW
+│   │   │       ├── agents/
+│   │   │       ├── departments/
+│   │   │       ├── categories/
+│   │   │       └── ticket-types/
 │   ├── components/
-│   │   ├── ui/                       # shadcn/ui base components
+│   │   ├── analytics/                # Chart + table components ← NEW
+│   │   │   ├── OverviewCards.tsx
+│   │   │   ├── AnalyticsFilters.tsx
+│   │   │   ├── TicketVolumeChart.tsx
+│   │   │   ├── StatusDistributionChart.tsx
+│   │   │   ├── PriorityDistributionChart.tsx
+│   │   │   ├── ResolutionTimeChart.tsx
+│   │   │   ├── DepartmentBreakdownChart.tsx
+│   │   │   └── AgentLoadTable.tsx
 │   │   ├── tickets/                  # Ticket-specific components
-│   │   └── tracking/                 # Tracking log renderer
-│   ├── hooks/                        # Custom React hooks
-│   ├── services/                     # API client layer
+│   │   ├── tracking/                 # Tracking log renderer
+│   │   ├── attachments/
+│   │   └── layout/                   # Sidebar, Header
+│   ├── hooks/
+│   │   ├── useAnalytics.ts           # 6 TanStack Query hooks ← NEW
+│   │   ├── useTickets.ts
+│   │   ├── useAgents.ts
+│   │   └── useDepartments.ts
+│   ├── services/
+│   │   ├── analytics.service.ts      # Axios calls to /api/analytics/* ← NEW
+│   │   ├── tickets.service.ts
+│   │   └── agents.service.ts
+│   ├── types/
+│   │   ├── analytics.types.ts        # Analytics response types ← NEW
+│   │   ├── ticket.types.ts
+│   │   └── api.types.ts
 │   ├── stores/                       # Zustand stores
-│   └── lib/                          # Utilities, validators
+│   └── lib/                          # Utilities, validators, api-client
 │
 ├── backend/                          # NestJS App
 │   ├── src/
+│   │   ├── analytics/                # Analytics module ← NEW
+│   │   │   ├── analytics.controller.ts   (6 GET endpoints, ADMIN|SUPERVISOR)
+│   │   │   ├── analytics.service.ts      (in-memory TTL cache 2–15 min)
+│   │   │   ├── analytics.repository.ts   (Prisma groupBy + raw SQL)
+│   │   │   └── dto/analytics-query.dto.ts
 │   │   ├── tickets/                  # Ticket module
-│   │   │   ├── tickets.controller.ts
-│   │   │   ├── tickets.service.ts
-│   │   │   ├── tickets.repository.ts
-│   │   │   └── dto/
-│   │   ├── agents/                   # Agent module
-│   │   ├── departments/              # Department module
-│   │   ├── tracking/                 # Tracking log module
-│   │   ├── auth/                     # Auth module (JWT)
-│   │   ├── common/                   # Guards, interceptors, pipes
-│   │   └── prisma/                   # Prisma service
-│   └── test/
-│
-├── database/
-│   ├── migrations/                   # Prisma migration files
-│   ├── seeders/                      # Seed data for dev/staging
-│   └── schema.prisma                 # Prisma schema
-│
-├── docs/
-│   ├── architecture.md
-│   ├── api.md
-│   └── er-diagram.png
+│   │   ├── tracking/                 # Immutable audit log
+│   │   ├── agents/
+│   │   ├── departments/
+│   │   ├── categories/
+│   │   ├── ticket-types/
+│   │   ├── attachments/
+│   │   ├── auth/                     # JWT + refresh token
+│   │   ├── mail/                     # Nodemailer templates
+│   │   ├── common/                   # Guards, decorators, filters, enums
+│   │   └── prisma/
+│   └── prisma/
+│       ├── migrations/
+│       ├── schema.prisma
+│       └── seed.ts
 │
 ├── docker-compose.yml
 ├── .env.example
@@ -289,9 +340,9 @@ npm run dev
 
 - [ ] SLA enforcement with breach alerts
 - [ ] Automated ticket routing by category/keyword
-- [ ] Email & Slack notifications
 - [ ] AI-assisted categorization and priority suggestion
-- [ ] Analytics dashboard (ticket volume, resolution time, agent load)
+- [ ] Analytics export to CSV
+- [ ] Real-time dashboard updates via WebSocket
 - [ ] Elasticsearch integration for full-text ticket search
 - [ ] Mobile-responsive PWA
 

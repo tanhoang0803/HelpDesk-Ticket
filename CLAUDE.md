@@ -233,6 +233,14 @@ PostgreSQL
 
 ```
 src/
+├── analytics/                        ← metrics aggregation module
+│   ├── analytics.module.ts
+│   ├── analytics.controller.ts       (6 GET endpoints, ADMIN|SUPERVISOR only)
+│   ├── analytics.service.ts          (in-memory TTL cache: 2–15 min per metric)
+│   ├── analytics.repository.ts       (Prisma groupBy + $queryRawUnsafe for DATE_TRUNC)
+│   └── dto/
+│       └── analytics-query.dto.ts    (startDate, endDate, departmentId, granularity)
+│
 ├── tickets/
 │   ├── tickets.module.ts
 │   ├── tickets.controller.ts
@@ -459,6 +467,16 @@ Validate at assignment time. Do not allow cross-department assignment without es
 ### Component Structure
 ```
 components/
+├── analytics/                      # Analytics dashboard widgets
+│   ├── OverviewCards.tsx           # 5 KPI metric cards with skeleton loaders
+│   ├── AnalyticsFilters.tsx        # Date presets, custom range, dept, granularity
+│   ├── TicketVolumeChart.tsx       # Bar chart — recharts
+│   ├── StatusDistributionChart.tsx # Donut chart — recharts
+│   ├── PriorityDistributionChart.tsx # Horizontal bar — recharts
+│   ├── ResolutionTimeChart.tsx     # Area chart with gradient — recharts
+│   ├── DepartmentBreakdownChart.tsx # Horizontal bar — recharts
+│   └── AgentLoadTable.tsx          # Sortable table with color-coded load badges
+│
 ├── tickets/
 │   ├── TicketCard.tsx          # Summary card for list view
 │   ├── TicketDetail.tsx        # Full ticket detail panel
@@ -470,7 +488,7 @@ components/
 │   ├── TrackingTimeline.tsx    # Chronological log view
 │   └── TrackingEntry.tsx       # Single log entry
 │
-└── ui/                         # shadcn/ui base components
+└── layout/                     # Sidebar, Header
 ```
 
 ### Data Fetching Pattern
@@ -540,6 +558,15 @@ GET    /departments                List departments
 GET    /agents                     List agents (filterable by dept)
 GET    /categories                 List categories
 GET    /ticket-types               List ticket types
+
+# Analytics — ADMIN and SUPERVISOR only
+# Query params: startDate, endDate, departmentId, granularity (day|week|month)
+GET    /analytics/overview              KPI cards (open, created, resolution rate, avg time)
+GET    /analytics/ticket-volume         Volume time-series by bucket
+GET    /analytics/priority-distribution Count + % per priority
+GET    /analytics/department-breakdown  Count + % per department
+GET    /analytics/resolution-time       Avg hours CREATED→RESOLVED per time bucket
+GET    /analytics/agent-load            Per-agent: assigned, resolved, avg resolution time
 ```
 
 ---
@@ -562,6 +589,56 @@ GET    /ticket-types               List ticket types
 - Never mock the database for integration tests
 - Test all status transition rules including forbidden paths
 - Seed test data deterministically — use fixed UUIDs in fixtures
+
+---
+
+## Analytics Dashboard
+
+### Feature Summary
+Role-restricted metrics dashboard (`/admin/analytics`) for ADMIN and SUPERVISOR. Provides real-time visibility into ticket operations using data from the existing `Ticket` and `TrackingLog` tables — no schema changes required.
+
+### Metrics
+| Endpoint            | Source                         | Chart type       | Cache TTL |
+|---------------------|--------------------------------|------------------|-----------|
+| overview            | Ticket groupBy + TrackingLog   | 5 KPI cards      | 2 min     |
+| ticket-volume       | Ticket.createdAt DATE_TRUNC    | Bar chart        | 15 min    |
+| priority-distribution | Ticket.priority groupBy      | Horizontal bar   | 5 min     |
+| department-breakdown | Ticket.departmentId groupBy   | Horizontal bar   | 5 min     |
+| resolution-time     | TrackingLog CREATED→RESOLVED   | Area chart       | 15 min    |
+| agent-load          | Tickets + TrackingLog per agent| Sortable table   | 15 min    |
+
+### Design Rules
+- Resolution time is always computed from `TrackingLog` (action = CREATED → action = RESOLVED), never from `Ticket.updatedAt`
+- Reopened tickets count only the first resolution: use `MIN(resolved.created_at)` per ticket in the aggregation query
+- Soft-deleted tickets (`deletedAt IS NOT NULL`) are excluded from volume metrics but included in historical resolution-time queries if they were resolved before deletion
+- All `DATE_TRUNC` queries use `$queryRawUnsafe` with a validated allowlist (`'day' | 'week' | 'month'`) — granularity is never taken raw from user input
+- The caching layer is a plain in-memory `Map<string, { value, expiresAt }>` in `AnalyticsService` — no Redis dependency at this stage
+- Cache key format: `{metric}:{startDate}:{endDate}:{departmentId}:{granularity}`
+
+### Frontend Hook Pattern
+```ts
+// hooks/useAnalytics.ts — stale times mirror backend cache TTLs
+export const useOverview = (q: AnalyticsQuery) =>
+  useQuery({
+    queryKey: ['analytics', 'overview', q],
+    queryFn:  () => analyticsService.getOverview(q),
+    staleTime: 2 * 60 * 1000,    // 2 min
+    enabled:   status === 'authenticated',
+  })
+```
+
+### RBAC
+Backend: `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles(AgentRole.ADMIN, AgentRole.SUPERVISOR)` on the entire controller.
+Frontend: RBAC enforced by the existing `app/(dashboard)/admin/layout.tsx` server component — no additional guard needed.
+
+### Adding New Metrics
+1. Add aggregation method to `analytics.repository.ts`
+2. Add cached wrapper in `analytics.service.ts` with an appropriate TTL
+3. Add `@Get(...)` route in `analytics.controller.ts`
+4. Add response type in `frontend/src/types/analytics.types.ts`
+5. Add service call in `frontend/src/services/analytics.service.ts`
+6. Add TanStack Query hook in `frontend/src/hooks/useAnalytics.ts`
+7. Add chart/table component in `frontend/src/components/analytics/`
 
 ---
 
