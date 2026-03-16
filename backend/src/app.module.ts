@@ -14,6 +14,7 @@ import { TrackingModule } from './tracking/tracking.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { MailModule } from './mail/mail.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -32,6 +33,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     TrackingModule,
     TicketsModule,
     AttachmentsModule,
+    AnalyticsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
