@@ -11,6 +11,7 @@ const navItems = [
 ];
 
 const adminItems = [
+  { href: '/admin/analytics',    label: 'Analytics',    icon: '📊' },
   { href: '/admin/agents',       label: 'Agents',       icon: '👥' },
   { href: '/admin/departments',  label: 'Departments',  icon: '🏢' },
   { href: '/admin/categories',   label: 'Categories',   icon: '🏷️' },

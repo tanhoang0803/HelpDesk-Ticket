@@ -44,8 +44,8 @@ export function PriorityDistributionChart({ data, isLoading }: Props) {
             />
             <Tooltip
               contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-              formatter={(value: number, _: string, props: { payload: PriorityCount }) =>
-                [`${value} (${props.payload.percent}%)`, 'Tickets']
+              formatter={(value, _, props) =>
+                [`${value} (${(props.payload as PriorityCount).percent}%)`, 'Tickets']
               }
             />
             <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={32}>
