@@ -1,0 +1,12 @@
+# Never bake secrets into the image
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+frontend/.env.local
+
+# Dev artifacts — not needed in the image
+**/node_modules
+**/.next
+**/dist
+**/.git
