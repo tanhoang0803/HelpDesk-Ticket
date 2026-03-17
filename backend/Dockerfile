@@ -24,10 +24,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma ./prisma
 
-# Production startup script: migrate → seed → start
-COPY start.sh ./start.sh
-RUN chmod +x ./start.sh
-
 EXPOSE 3001
 
-CMD ["sh", "start.sh"]
+# Railway overrides this CMD with startCommand in railway.toml
+# (migrate → seed → node dist/main).
+# This default is used for local docker run / docker-compose.
+CMD ["node", "dist/main"]

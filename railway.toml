@@ -1,14 +1,13 @@
 # Railway reads this file from the repo root automatically.
-# No UI "Root Directory" setting needed.
-# dockerfilePath tells Railway which Dockerfile to use;
-# Railway uses that file's directory (backend/) as the Docker build context.
+# startCommand runs INSIDE the already-built container, so no file
+# copying from the build context is needed.
 
 [build]
 builder        = "DOCKERFILE"
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand            = "sh start.sh"
+startCommand            = "npx prisma migrate deploy && (npx prisma db seed || true) && node dist/main"
 healthcheckPath         = "/api/health"
 healthcheckTimeout      = 300
 restartPolicyType       = "ON_FAILURE"
