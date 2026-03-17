@@ -4,5 +4,7 @@ dockerfilePath = "backend/Dockerfile"
 
 [deploy]
 startCommand            = "npx prisma migrate deploy && (npx prisma db seed || true) && node dist/main"
+healthcheckPath         = "/api/health"
+healthcheckTimeout      = 300
 restartPolicyType       = "ON_FAILURE"
 restartPolicyMaxRetries = 3
