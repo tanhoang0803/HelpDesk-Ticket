@@ -291,10 +291,10 @@ helpdesk-ticketing/
 
 The project is deployed and accessible online — no local setup required.
 
-| Service      | URL                                                       |
-|--------------|-----------------------------------------------------------|
-| **Frontend** | https://help-desk-ticket.vercel.app                       |
-| **API docs** | https://helpdesk-backend.up.railway.app/api/docs          |
+| Service      | URL                                                                        |
+|--------------|----------------------------------------------------------------------------|
+| **Frontend** | https://help-desk-ticket-sss.vercel.app                                    |
+| **API docs** | https://helpdesk-ticket-production.up.railway.app/api/docs                 |
 
 ### Demo credentials
 
