@@ -16,13 +16,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
+# prisma is in dependencies so it stays after --omit=dev
 RUN npm ci --omit=dev
 
-# Copy compiled output and prisma schema
+# Compiled output + prisma schema + generated client
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma ./prisma
 
+# Production startup script: migrate → seed → start
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 EXPOSE 3001
 
-CMD ["node", "dist/main"]
+CMD ["sh", "start.sh"]

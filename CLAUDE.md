@@ -1,5 +1,66 @@
 # CLAUDE.md
 
+## Deployment
+
+### Platform overview
+
+| Layer     | Platform   | Trigger               | Notes |
+|-----------|------------|-----------------------|-------|
+| Frontend  | Vercel     | push to `master`      | Auto-detected as Next.js via `vercel.json` |
+| Backend   | Railway    | push to `master`      | Dockerfile + `railway.toml` in `backend/` |
+| Database  | Railway PG | provisioned once      | `DATABASE_URL` injected automatically |
+| Cache     | Railway Redis | provisioned once   | `REDIS_*` vars set manually |
+
+### Files that control deployment
+
+| File | Purpose |
+|---|---|
+| `vercel.json` | Tells Vercel to use `frontend/` as root directory |
+| `backend/railway.toml` | Sets Dockerfile builder, start command, health check |
+| `backend/Dockerfile` | Multi-stage build: compile → lean production image |
+| `backend/start.sh` | Startup script: `migrate → seed → node dist/main` |
+| `backend/.env.example` | Template for all required backend env vars |
+| `frontend/.env.example` | Template for all required frontend env vars |
+
+### Production environment variables
+
+**Backend (Railway Variables tab):**
+```
+DATABASE_URL        — injected automatically by Railway PostgreSQL service
+REDIS_HOST          — from Railway Redis service
+REDIS_PORT          — from Railway Redis service
+REDIS_PASSWORD      — from Railway Redis service
+JWT_SECRET          — openssl rand -hex 32
+JWT_EXPIRES_IN      — 15m
+JWT_REFRESH_SECRET  — openssl rand -hex 32 (different value)
+JWT_REFRESH_EXPIRES_IN — 7d
+FRONTEND_URL        — Vercel production URL (for CORS)
+NODE_ENV            — production
+PORT                — injected automatically by Railway (do not override)
+```
+
+**Frontend (Vercel Environment Variables):**
+```
+NEXTAUTH_URL        — Vercel production URL (https://your-app.vercel.app)
+NEXTAUTH_SECRET     — openssl rand -hex 32
+NEXT_PUBLIC_API_URL — Railway backend URL (baked in at build time)
+```
+
+### Health check endpoint
+`GET /api/health` — returns `{"status":"ok","timestamp":"...","uptime":42}`.
+No authentication required. Used by Railway as the liveness probe before traffic is routed to a new deployment.
+
+### Startup sequence (inside Docker container)
+`start.sh` runs three steps in order:
+1. `npx prisma migrate deploy` — applies any pending migrations (idempotent)
+2. `npx prisma db seed` — seeds reference data; exits 0 if already seeded
+3. `exec node dist/main` — starts the NestJS API (`exec` replaces the shell process so signals are forwarded correctly)
+
+### CORS
+The backend's CORS `origin` is set from `process.env.FRONTEND_URL`. After deploying the frontend to Vercel, update this variable in Railway and trigger a redeploy.
+
+---
+
 ## Local Development Setup
 
 ### Prerequisites

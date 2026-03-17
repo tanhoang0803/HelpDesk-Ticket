@@ -287,7 +287,28 @@ helpdesk-ticketing/
 
 ---
 
-## Getting Started
+## Live Demo
+
+The project is deployed and accessible online — no local setup required.
+
+| Service      | URL                                                       |
+|--------------|-----------------------------------------------------------|
+| **Frontend** | https://help-desk-ticket.vercel.app                       |
+| **API docs** | https://helpdesk-backend.up.railway.app/api/docs          |
+
+### Demo credentials
+
+| Role       | Email                     | Password   |
+|------------|---------------------------|------------|
+| Admin      | admin@helpdesk.com        | Admin@1234 |
+| Supervisor | supervisor@helpdesk.com   | Super@1234 |
+| Agent      | agent@helpdesk.com        | Agent@1234 |
+
+> Shared demo environment — do not store sensitive information.
+
+---
+
+## Getting Started (Local Development)
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
@@ -303,11 +324,12 @@ cd HelpDesk-Ticket
 ```bash
 docker-compose up -d
 ```
-> PostgreSQL runs on port **5433** to avoid conflicts with local PostgreSQL installations. Redis runs on port 6379.
+> PostgreSQL runs on port **5433** to avoid conflicts with local installations. Redis runs on 6379.
 
 ### 3. Set up and start the backend
 ```bash
 cd backend
+cp .env.example .env        # then edit .env if needed
 npx prisma migrate dev --name init
 npx prisma db seed
 npm run start:dev
@@ -316,6 +338,7 @@ npm run start:dev
 ### 4. Start the frontend (new terminal)
 ```bash
 cd frontend
+cp .env.example .env.local  # then edit .env.local if needed
 npm run dev
 ```
 
@@ -326,13 +349,129 @@ npm run dev
 | Backend API  | http://localhost:3001/api       |
 | Swagger docs | http://localhost:3001/api/docs  |
 
-### Default login credentials
+---
 
-| Role       | Email                     | Password   |
-|------------|---------------------------|------------|
-| Admin      | admin@helpdesk.com        | Admin@1234 |
-| Supervisor | supervisor@helpdesk.com   | Super@1234 |
-| Agent      | agent@helpdesk.com        | Agent@1234 |
+## Deployment Guide
+
+The project uses **Railway** for the backend + database + Redis and **Vercel** for the frontend. Both platforms connect directly to GitHub and redeploy automatically on every push to `master`.
+
+```
+GitHub (master)
+   ├── Vercel  →  Next.js frontend  (https://your-app.vercel.app)
+   └── Railway →  NestJS backend   (https://your-backend.up.railway.app)
+                  PostgreSQL DB
+                  Redis cache
+```
+
+---
+
+### Part 1 — Deploy the Backend on Railway
+
+**Step 1 — Create a Railway account**
+
+Sign up at [railway.app](https://railway.app) (GitHub login recommended).
+
+**Step 2 — Create a new project**
+
+1. Click **New Project → Deploy from GitHub repo**
+2. Select this repository (`HelpDesk-Ticket`)
+3. Choose **backend/** as the root directory
+4. Railway auto-detects the `Dockerfile` and `railway.toml`
+
+**Step 3 — Add PostgreSQL**
+
+In the project dashboard:
+1. Click **+ New → Database → PostgreSQL**
+2. Railway automatically injects `DATABASE_URL` into the backend service
+
+**Step 4 — Add Redis**
+
+1. Click **+ New → Database → Redis**
+2. Copy the `REDIS_URL` from the Redis service variables panel
+
+**Step 5 — Set environment variables**
+
+In the backend service → **Variables** tab, add:
+
+| Variable | Value |
+|---|---|
+| `REDIS_HOST` | from Redis service (e.g. `redis.railway.internal`) |
+| `REDIS_PORT` | `6379` |
+| `REDIS_PASSWORD` | from Redis service variables |
+| `JWT_SECRET` | `openssl rand -hex 32` |
+| `JWT_EXPIRES_IN` | `15m` |
+| `JWT_REFRESH_SECRET` | `openssl rand -hex 32` (different from above) |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` |
+| `FRONTEND_URL` | your Vercel URL (set after Part 2, e.g. `https://your-app.vercel.app`) |
+| `NODE_ENV` | `production` |
+
+> `DATABASE_URL` and `PORT` are injected by Railway automatically — do not set them manually.
+
+**Step 6 — Deploy**
+
+Click **Deploy**. Railway will:
+1. Build the Docker image
+2. Run `start.sh`: apply migrations → seed demo data → start the API server
+3. Expose the API at `https://your-backend.up.railway.app`
+
+Health check: `https://your-backend.up.railway.app/api/health` → `{"status":"ok"}`
+
+---
+
+### Part 2 — Deploy the Frontend on Vercel
+
+**Step 1 — Create a Vercel account**
+
+Sign up at [vercel.com](https://vercel.com) (GitHub login recommended).
+
+**Step 2 — Import the repository**
+
+1. Click **Add New → Project**
+2. Import `HelpDesk-Ticket` from GitHub
+3. Vercel reads `vercel.json` at the repo root and automatically sets:
+   - **Root directory:** `frontend/`
+   - **Framework:** Next.js
+
+**Step 3 — Set environment variables**
+
+In the Vercel project → **Settings → Environment Variables**, add:
+
+| Variable | Value |
+|---|---|
+| `NEXTAUTH_URL` | Your Vercel production URL (e.g. `https://your-app.vercel.app`) |
+| `NEXTAUTH_SECRET` | `openssl rand -hex 32` |
+| `NEXT_PUBLIC_API_URL` | Your Railway backend URL (e.g. `https://your-backend.up.railway.app`) |
+
+> `NEXT_PUBLIC_API_URL` is baked into the client bundle at **build time** — if you change the Railway URL, you must trigger a Vercel redeploy.
+
+**Step 4 — Deploy**
+
+Click **Deploy**. Once live, copy the production URL and paste it into Railway's `FRONTEND_URL` variable, then redeploy the backend service.
+
+---
+
+### Part 3 — Continuous Deployment
+
+After the initial setup, both platforms monitor the `master` branch:
+
+| Event | What happens |
+|---|---|
+| Push to `master` | GitHub Actions CI runs (validate backend + frontend) |
+| CI passes | Vercel auto-redeploys frontend |
+| CI passes | Railway auto-redeploys backend |
+
+No manual steps required after the initial setup.
+
+---
+
+### Generating secure secrets
+
+```bash
+# Linux / macOS / Git Bash (Windows)
+openssl rand -hex 32
+```
+
+Use a **different** value for `JWT_SECRET` and `JWT_REFRESH_SECRET`.
 
 ---
 
