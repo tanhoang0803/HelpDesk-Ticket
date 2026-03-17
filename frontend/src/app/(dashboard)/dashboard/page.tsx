@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import { DashboardTicketsTable } from '@/components/dashboard/DashboardTicketsTable';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -28,6 +29,8 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      <DashboardTicketsTable />
     </div>
   );
 }

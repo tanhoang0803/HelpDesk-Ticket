@@ -21,7 +21,7 @@ const TICKET_DETAIL_SELECT = {
 };
 
 const TICKET_LIST_SELECT = {
-  id: true, ticketNumber: true, title: true,
+  id: true, ticketNumber: true, title: true, description: true,
   priority: true, status: true, createdAt: true, updatedAt: true,
   department: { select: { id: true, name: true } },
   assignedTo: { select: { id: true, name: true } },
