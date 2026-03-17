@@ -1,11 +1,14 @@
+# Build context = repo root (Railway behaviour when dockerfilePath is used).
+# All COPY from the build context must use the backend/ prefix.
+
 # ── Stage 1: build ──────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend/package*.json ./
 RUN npm ci
 
-COPY . .
+COPY backend/ .
 RUN npx prisma generate
 RUN npm run build
 
@@ -15,18 +18,16 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package*.json ./
-# prisma is in dependencies so it stays after --omit=dev
+COPY backend/package*.json ./
 RUN npm ci --omit=dev
 
-# Compiled output + prisma schema + generated client
-COPY --from=builder /app/dist ./dist
+# Pull compiled output + prisma from builder — no build-context path needed
+COPY --from=builder /app/dist               ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY prisma ./prisma
+COPY --from=builder /app/prisma             ./prisma
 
 EXPOSE 3001
 
-# Railway overrides this CMD with startCommand in railway.toml
-# (migrate → seed → node dist/main).
-# This default is used for local docker run / docker-compose.
+# Railway overrides CMD with startCommand in railway.toml (migrate→seed→start).
+# This default is used for local docker run only.
 CMD ["node", "dist/main"]
