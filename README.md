@@ -338,13 +338,91 @@ npm run dev
 
 ## Future Improvements
 
-- [ ] SLA enforcement with breach alerts
-- [ ] Automated ticket routing by category/keyword
-- [ ] AI-assisted categorization and priority suggestion
-- [ ] Analytics export to CSV
-- [ ] Real-time dashboard updates via WebSocket
-- [ ] Elasticsearch integration for full-text ticket search
-- [ ] Mobile-responsive PWA
+Items are grouped by domain. Each reflects a concrete gap in the current build — not wishlist thinking.
+
+### Notifications & Real-time
+
+- [ ] **WebSocket live updates** — Socket.io room per ticket; push status changes and new comments to open browser tabs without polling. The current architecture polls on a 30s stale-time.
+- [ ] **Email on every transition** — `MailService` currently only fires on ticket creation. Every status change (ASSIGNED, RESOLVED, REOPENED, etc.) should notify the assigned agent and requester with role-appropriate templates.
+- [ ] **BullMQ email queue** — Redis + BullMQ are already in the stack but the mail service calls Nodemailer synchronously. Move all email sends into a `mail` queue with retry logic so a failing SMTP provider never blocks the API response.
+- [ ] **In-app notification bell** — Unread badge count in the sidebar header; notification feed showing mentions, assignments, and SLA warnings without leaving the app.
+- [ ] **Slack / Microsoft Teams integration** — Webhook-based posting when a ticket is created, escalated, or breaches SLA. Configurable per department.
+
+---
+
+### SLA Management
+
+- [ ] **SLA policies per priority** — Define target response and resolution hours per priority tier (Critical: 1h / High: 4h / Medium: 8h / Low: 24h) stored in the database, not hardcoded in the README.
+- [ ] **SLA countdown timer on ticket detail** — Live countdown showing time remaining before breach; color shifts yellow → red as the deadline approaches.
+- [ ] **Automatic breach detection** — Scheduled job (cron via NestJS `@Cron`) that queries open tickets past their SLA deadline and flags them `ESCALATED` or fires an alert.
+- [ ] **SLA compliance KPI in Analytics** — Add an SLA breach rate card and trend chart to the existing analytics dashboard.
+
+---
+
+### Search & Filtering
+
+- [ ] **Full-text search on description** — Current `search` param only matches `title` and `ticketNumber`. Add PostgreSQL `tsvector` index on `description` or migrate to Elasticsearch for relevance ranking.
+- [ ] **Advanced filter panel** — Date range picker, multi-select status, department tree, and assignee filter directly on the tickets list page (currently only status and priority are filterable).
+- [ ] **Saved filter presets** — Let agents save frequently used filter combinations (e.g., "My open critical tickets") as named bookmarks stored in `localStorage` or the database.
+
+---
+
+### Analytics & Reporting
+
+- [ ] **CSV / Excel export** — Export button on every analytics chart and the dashboard tickets table. Stream the file from the backend (`/analytics/export?format=csv`) so large exports don't block memory.
+- [ ] **Scheduled email reports** — Weekly or daily PDF summary (open count, SLA rate, top agents) delivered to supervisors and admins automatically via cron.
+- [ ] **Custom date comparison** — Period-over-period view in Analytics (e.g., this month vs. last month) so managers can spot trends without manual calculation.
+- [ ] **Agent performance scorecard** — Dedicated page per agent showing resolution rate, avg resolution time, SLA compliance, and open workload over selectable time ranges.
+- [ ] **Requester satisfaction rating** — After a ticket reaches CLOSED, send a 1–5 star survey link. Store responses and surface average CSAT per agent and department in Analytics.
+
+---
+
+### Ticket Workflow
+
+- [ ] **Bulk operations** — Checkbox selection on the tickets table to bulk-assign, bulk-transition, or bulk-export selected tickets in one action.
+- [ ] **Ticket templates** — Pre-filled forms for common request types (e.g., "VPN access request", "New hardware setup") so requesters don't start from a blank form.
+- [ ] **Internal notes** — A comment type visible only to agents and supervisors, separate from the public tracking log shown to the requester.
+- [ ] **Ticket merging** — Identify and merge duplicate tickets raised for the same underlying issue; child tickets link to the parent and inherit its resolution.
+- [ ] **Dependent / child tickets** — Split a complex ticket into sub-tasks assigned to different agents; the parent auto-resolves when all children close.
+- [ ] **Requester self-service portal** — Dedicated low-friction UI where requesters submit, track, and comment on their own tickets without seeing the full agent dashboard.
+
+---
+
+### AI & Automation
+
+- [ ] **Auto-categorization** — On ticket creation, call an LLM (Claude API or lightweight classifier) to suggest `category`, `ticketType`, and `priority` from the description. Agent can accept or override.
+- [ ] **Smart routing** — Route new tickets to the best-available agent in the target department based on current workload (open assigned count) and historical resolution time per category.
+- [ ] **Duplicate detection** — Before submission, embed the description and run cosine similarity against recent open tickets; warn the requester if a near-identical ticket already exists.
+- [ ] **Resolution suggestion** — Surface the top 3 past resolved tickets with similar descriptions as suggested solutions inside the ticket detail panel.
+
+---
+
+### Auth & Access Control
+
+- [ ] **Two-factor authentication (2FA)** — TOTP via authenticator app for Admin and Supervisor accounts; enforced at login with a QR code setup flow.
+- [ ] **SSO / OAuth2** — Allow login via Google Workspace or Azure AD so organizations don't manage a separate password per user.
+- [ ] **Fine-grained permissions** — Move beyond the four hard-coded roles to a permission matrix: custom roles with per-action grants (e.g., an agent who can verify but not assign).
+- [ ] **Session management** — Active session listing in user profile settings; ability to revoke individual sessions (currently refresh tokens cannot be individually invalidated without flushing Redis).
+
+---
+
+### Performance & Infrastructure
+
+- [ ] **Cursor-based pagination** — Replace `OFFSET`-based pagination with cursor (keyset) pagination on the tickets list to avoid slow queries when ticket volume exceeds 100k rows.
+- [ ] **Redis cache for ticket lists** — The analytics service has an in-memory TTL cache; the tickets list API has none. Add Redis-backed cache with targeted invalidation on mutation to reduce database read load.
+- [ ] **CDN for attachments** — Current file uploads are stored on the local filesystem inside the container. Move to S3-compatible object storage (AWS S3, MinIO) behind a CDN for durability and performance.
+- [ ] **Horizontal scaling** — Stateless backend is already designed for this; add a `docker-compose.prod.yml` with Nginx upstream load balancing across multiple NestJS instances and shared Redis for session and cache.
+- [ ] **Observability stack** — Wire Prometheus metrics (request latency, queue depth, error rate) into a Grafana dashboard; add distributed tracing with OpenTelemetry for cross-service request correlation.
+- [ ] **Database read replicas** — Route analytics queries to a PostgreSQL read replica so heavy aggregation SQL doesn't contend with OLTP ticket writes on the primary.
+
+---
+
+### Developer Experience
+
+- [ ] **API versioning** — Introduce `/api/v1/` prefix with a stable contract; add a deprecation header workflow so consumers have a migration window before breaking changes land.
+- [ ] **End-to-end test suite** — Playwright tests covering the critical user journeys: create ticket → assign → resolve → verify → close, and RBAC gate checks (agent cannot verify, requester cannot assign).
+- [ ] **Integration test database** — Currently no integration tests exist. Add a Jest + Prisma test setup that spins up a disposable PostgreSQL schema per test run and tears it down after.
+- [ ] **OpenAPI SDK generation** — Auto-generate a typed API client from the Swagger spec (`@nestjs/swagger` + `openapi-generator`) and publish it as an internal package consumed by the frontend instead of hand-written service files.
 
 ---
 
