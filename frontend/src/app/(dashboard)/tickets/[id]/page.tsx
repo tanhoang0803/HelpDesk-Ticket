@@ -8,14 +8,16 @@ import { TicketPriorityBadge } from '@/components/tickets/TicketPriorityBadge';
 import { AttachmentList } from '@/components/attachments/AttachmentList';
 import { AttachmentUpload } from '@/components/attachments/AttachmentUpload';
 import { formatDateTime } from '@/lib/utils/date';
-import { ALLOWED_TRANSITIONS, STATUS_LABELS } from '@/lib/utils/ticket-status';
+import { getTransitionsForRole, STATUS_LABELS } from '@/lib/utils/ticket-status';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
   const { data: ticket, isLoading, error } = useTicket(params.id);
   const { data: attachments = [] } = useAttachments(params.id);
   const transition = useTransitionTicket(params.id);
   const addComment = useAddComment(params.id);
+  const { data: session } = useSession();
   const [comment,           setComment]           = useState('');
   const [transitionStatus,  setTransitionStatus]  = useState('');
   const [transitionComment, setTransitionComment] = useState('');
@@ -38,7 +40,10 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     );
   }
 
-  const allowedNext = ALLOWED_TRANSITIONS[ticket.status] ?? [];
+  const currentRole    = session?.user?.role ?? 'REQUESTER';
+  const currentUserId  = session?.user?.id   ?? '';
+  const isAssignedToMe = ticket.assignedTo?.id === currentUserId;
+  const allowedNext    = getTransitionsForRole(ticket.status, currentRole, isAssignedToMe);
 
   const handleTransition = async () => {
     if (!transitionStatus) return;

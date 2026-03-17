@@ -52,3 +52,34 @@ export const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   CLOSED:      [],
   CANCELLED:   [],
 };
+
+// Statuses that only ADMIN or SUPERVISOR can set
+const PRIVILEGED_TARGETS = new Set<TicketStatus>(['ASSIGNED', 'VERIFIED', 'CLOSED']);
+
+/**
+ * Returns the subset of transitions the current user is actually allowed to
+ * trigger from the UI, based on their role and ticket ownership.
+ *
+ * @param status              Current ticket status
+ * @param role                Current user's AgentRole string
+ * @param isAssignedToMe      True if ticket.assignedTo.id === current user's id
+ */
+export function getTransitionsForRole(
+  status: TicketStatus,
+  role: string,
+  isAssignedToMe: boolean,
+): TicketStatus[] {
+  const all = ALLOWED_TRANSITIONS[status] ?? [];
+
+  if (role === 'ADMIN' || role === 'SUPERVISOR') return all;
+
+  if (role === 'AGENT') {
+    // Agents can only act on tickets assigned to them
+    if (!isAssignedToMe) return [];
+    // Filter out admin/supervisor-only target statuses
+    return all.filter((s) => !PRIVILEGED_TARGETS.has(s));
+  }
+
+  // REQUESTER: can only cancel their own tickets
+  return all.filter((s) => s === 'CANCELLED');
+}
