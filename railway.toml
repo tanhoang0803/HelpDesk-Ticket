@@ -3,7 +3,7 @@ builder        = "DOCKERFILE"
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand            = "node_modules/.bin/prisma migrate deploy && (node dist/prisma/seed.js || echo 'Seed skipped') && node dist/main"
+startCommand            = "node_modules/.bin/prisma migrate deploy && node dist/main"
 healthcheckPath         = "/api/health"
 healthcheckTimeout      = 600
 restartPolicyType       = "ON_FAILURE"
