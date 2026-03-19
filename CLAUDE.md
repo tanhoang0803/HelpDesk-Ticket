@@ -15,10 +15,10 @@
 
 | File | Purpose |
 |---|---|
-| `vercel.json` | Tells Vercel to use `frontend/` as root directory |
-| `backend/railway.toml` | Sets Dockerfile builder, start command, health check |
+| `vercel.json` | Tells Vercel to use `frontend/` as root directory (rootDirectory set in Vercel UI) |
+| `backend/railway.toml` | Sets Dockerfile builder and restart policy (no startCommand — uses Dockerfile CMD) |
 | `backend/Dockerfile` | Multi-stage build: compile → lean production image |
-| `backend/start.sh` | Startup script: `migrate → seed → node dist/main` |
+| `backend/start.sh` | Startup script: `migrate → seed (dist/prisma/seed.js) → node dist/src/main.js` |
 | `backend/.env.example` | Template for all required backend env vars |
 | `frontend/.env.example` | Template for all required frontend env vars |
 
@@ -41,9 +41,9 @@ PORT                — injected automatically by Railway (do not override)
 
 **Frontend (Vercel Environment Variables):**
 ```
-NEXTAUTH_URL        — Vercel production URL (https://your-app.vercel.app)
+NEXTAUTH_URL        — https://help-desk-ticket-sss.vercel.app
 NEXTAUTH_SECRET     — openssl rand -hex 32
-NEXT_PUBLIC_API_URL — Railway backend URL (baked in at build time)
+NEXT_PUBLIC_API_URL — https://helpdesk-ticket-production.up.railway.app (baked in at build time)
 ```
 
 ### Health check endpoint
@@ -52,9 +52,11 @@ No authentication required. Used by Railway as the liveness probe before traffic
 
 ### Startup sequence (inside Docker container)
 `start.sh` runs three steps in order:
-1. `npx prisma migrate deploy` — applies any pending migrations (idempotent)
-2. `npx prisma db seed` — seeds reference data; exits 0 if already seeded
-3. `exec node dist/main` — starts the NestJS API (`exec` replaces the shell process so signals are forwarded correctly)
+1. `node_modules/.bin/prisma migrate deploy` — applies any pending migrations (idempotent)
+2. `node dist/prisma/seed.js` — seeds reference data compiled by `nest build`; exits 0 if already seeded
+3. `exec node dist/src/main.js` — starts the NestJS API (`exec` replaces the shell so signals are forwarded correctly)
+
+> **Note:** `nest build` outputs to `dist/src/` (not `dist/`) because `prisma.config.ts` at the backend root shifts the TypeScript `rootDir`. The seed file is at `dist/prisma/seed.js` because tsconfig compiles all `.ts` files. `ts-node` is a devDependency and is not available in the production image.
 
 ### CORS
 The backend's CORS `origin` is set from `process.env.FRONTEND_URL`. After deploying the frontend to Vercel, update this variable in Railway and trigger a redeploy.

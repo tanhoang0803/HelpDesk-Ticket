@@ -357,8 +357,8 @@ The project uses **Railway** for the backend + database + Redis and **Vercel** f
 
 ```
 GitHub (master)
-   ├── Vercel  →  Next.js frontend  (https://your-app.vercel.app)
-   └── Railway →  NestJS backend   (https://your-backend.up.railway.app)
+   ├── Vercel  →  Next.js frontend  (https://help-desk-ticket-sss.vercel.app)
+   └── Railway →  NestJS backend   (https://helpdesk-ticket-production.up.railway.app)
                   PostgreSQL DB
                   Redis cache
 ```
@@ -414,7 +414,7 @@ Click **Deploy**. Railway will:
 2. Run `start.sh`: apply migrations → seed demo data → start the API server
 3. Expose the API at `https://your-backend.up.railway.app`
 
-Health check: `https://your-backend.up.railway.app/api/health` → `{"status":"ok"}`
+Health check: `https://helpdesk-ticket-production.up.railway.app/api/health` → `{"status":"ok"}`
 
 ---
 
@@ -438,15 +438,15 @@ In the Vercel project → **Settings → Environment Variables**, add:
 
 | Variable | Value |
 |---|---|
-| `NEXTAUTH_URL` | Your Vercel production URL (e.g. `https://your-app.vercel.app`) |
+| `NEXTAUTH_URL` | `https://help-desk-ticket-sss.vercel.app` |
 | `NEXTAUTH_SECRET` | `openssl rand -hex 32` |
-| `NEXT_PUBLIC_API_URL` | Your Railway backend URL (e.g. `https://your-backend.up.railway.app`) |
+| `NEXT_PUBLIC_API_URL` | `https://helpdesk-ticket-production.up.railway.app` |
 
 > `NEXT_PUBLIC_API_URL` is baked into the client bundle at **build time** — if you change the Railway URL, you must trigger a Vercel redeploy.
 
 **Step 4 — Deploy**
 
-Click **Deploy**. Once live, copy the production URL and paste it into Railway's `FRONTEND_URL` variable, then redeploy the backend service.
+Click **Deploy**. Once live, set `FRONTEND_URL=https://help-desk-ticket-sss.vercel.app` in Railway's Variables tab and redeploy the backend so CORS allows the production domain.
 
 ---
 
