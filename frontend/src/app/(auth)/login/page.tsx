@@ -38,7 +38,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">🎫 HelpDesk</h1>
@@ -89,6 +89,9 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+      <footer className="absolute bottom-4 w-full text-center text-xs text-gray-400">
+        &copy; 2026 TanQHoang. All rights reserved.
+      </footer>
     </div>
   );
 }
