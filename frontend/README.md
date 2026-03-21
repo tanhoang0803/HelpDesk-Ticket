@@ -127,3 +127,7 @@ npm run lint      # ESLint (does not block build)
 ## License
 
 MIT
+
+---
+
+&copy; 2026 [TanQHoang](https://github.com/tanhoang0803). All rights reserved.

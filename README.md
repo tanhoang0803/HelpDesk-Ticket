@@ -568,3 +568,7 @@ Items are grouped by domain. Each reflects a concrete gap in the current build â
 ## License
 
 MIT
+
+---
+
+&copy; 2026 [TanQHoang](https://github.com/tanhoang0803). All rights reserved.

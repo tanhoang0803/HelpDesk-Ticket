@@ -143,3 +143,7 @@ Health check: `GET /api/health` → `{"status":"ok","timestamp":"...","uptime":4
 ## License
 
 MIT
+
+---
+
+&copy; 2026 [TanQHoang](https://github.com/tanhoang0803). All rights reserved.
