@@ -162,24 +162,24 @@ Tracking Log:
 | Framework    | NestJS (modular, scalable)       |
 | API          | REST (OpenAPI documented)        |
 | Auth         | JWT + Refresh Token rotation     |
-| Queue        | BullMQ (Redis-backed)            |
 | Validation   | class-validator + class-transformer |
+| Email        | Nodemailer (fire-and-forget)     |
 
 ### Database
 | Layer        | Technology                       |
 |--------------|----------------------------------|
 | Primary DB   | PostgreSQL                       |
 | ORM          | Prisma                           |
-| Cache        | Redis                            |
-| Search       | PostgreSQL full-text (phase 1)   |
+| Cache        | Redis (analytics in-memory TTL)  |
+| Search       | PostgreSQL ILIKE (title + ticketNumber) |
 
 ### Infrastructure
 | Layer        | Technology                       |
 |--------------|----------------------------------|
-| Containers   | Docker + Docker Compose          |
+| Containers   | Docker + Docker Compose (local)  |
+| Backend host | Railway (Dockerfile + PostgreSQL + Redis) |
+| Frontend host| Vercel (Next.js auto-detected)   |
 | CI/CD        | GitHub Actions                   |
-| Reverse Proxy| Nginx                            |
-| Monitoring   | (planned) Grafana + Prometheus   |
 
 ---
 

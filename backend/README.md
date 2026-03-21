@@ -1,98 +1,145 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Helpdesk Ticketing — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS REST API for the Helpdesk Ticketing System. Handles authentication, ticket lifecycle management, role-based access control, file attachments, and analytics aggregation.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Tech Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Layer      | Technology                              |
+|------------|-----------------------------------------|
+| Runtime    | Node.js 18+                             |
+| Framework  | NestJS                                  |
+| ORM        | Prisma                                  |
+| Database   | PostgreSQL                              |
+| Cache      | Redis (analytics in-memory TTL cache)  |
+| Auth       | JWT + Refresh Token rotation            |
+| Email      | Nodemailer (fire-and-forget)            |
+| Validation | class-validator + class-transformer     |
+| API Docs   | Swagger / OpenAPI (`/api/docs`)         |
 
-## Project setup
+---
 
+## Local Development
+
+### Prerequisites
+- Docker Desktop (for PostgreSQL + Redis)
+- Node.js 18+
+
+### 1. Start infrastructure
 ```bash
-$ npm install
+# from repo root
+docker-compose up -d
+```
+PostgreSQL runs on port **5433** (not 5432) to avoid conflicts.
+
+### 2. Install dependencies
+```bash
+npm install
 ```
 
-## Compile and run the project
-
+### 3. Configure environment
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
+# Edit .env if needed — defaults work with docker-compose
 ```
 
-## Run tests
-
+### 4. Run migrations and seed
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma migrate dev --name init
+npx prisma db seed
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 5. Start dev server
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+API is available at `http://localhost:3001/api`
+Swagger docs at `http://localhost:3001/api/docs`
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Module Structure
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```
+src/
+├── analytics/        # KPI aggregations (ADMIN|SUPERVISOR only)
+├── tickets/          # Core ticket CRUD + state machine
+├── tracking/         # Append-only audit log
+├── attachments/      # File upload/download (local disk)
+├── agents/           # Agent management
+├── departments/      # Department reference data
+├── categories/       # Category reference data
+├── ticket-types/     # Ticket type reference data
+├── auth/             # JWT strategy, guards, refresh rotation
+├── mail/             # Nodemailer templates (fire-and-forget)
+├── common/           # Enums, guards, filters, pipes
+└── prisma/           # PrismaService singleton
+```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Key Commands
 
-## Stay in touch
+```bash
+npm run start:dev       # Dev server with hot reload
+npm run build           # Compile to dist/
+npm run start:prod      # Run compiled output
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+npx prisma migrate dev  # Create + apply migration
+npx prisma db seed      # Seed demo data (idempotent)
+npx prisma studio       # GUI database browser
+
+npm run test            # Unit tests
+npm run test:e2e        # E2E tests
+npm run test:cov        # Coverage report
+```
+
+---
+
+## Production (Railway)
+
+The backend is deployed via Dockerfile on Railway. On every push to `master`:
+
+1. Railway builds the Docker image (`npm run build` inside multi-stage Dockerfile)
+2. `start.sh` runs on container start:
+   - `prisma migrate deploy` — apply pending migrations
+   - `node dist/prisma/seed.js` — seed reference data (idempotent)
+   - `exec node dist/src/main.js` — start the API
+
+> `nest build` outputs to `dist/src/` (not `dist/`) because `prisma.config.ts` at the backend root shifts the TypeScript `rootDir`. This is documented in `CLAUDE.md`.
+
+Health check: `GET /api/health` → `{"status":"ok","timestamp":"...","uptime":42}`
+
+### Required environment variables (Railway Variables tab)
+
+| Variable | Notes |
+|---|---|
+| `DATABASE_URL` | Injected automatically by Railway PostgreSQL |
+| `REDIS_HOST` | From Railway Redis service |
+| `REDIS_PORT` | From Railway Redis service |
+| `REDIS_PASSWORD` | From Railway Redis service |
+| `JWT_SECRET` | `openssl rand -hex 32` |
+| `JWT_EXPIRES_IN` | `15m` |
+| `JWT_REFRESH_SECRET` | `openssl rand -hex 32` (different value) |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` |
+| `FRONTEND_URL` | Vercel production URL (for CORS) |
+| `NODE_ENV` | `production` |
+| `PORT` | Injected automatically by Railway — do not set |
+
+---
+
+## Default Demo Credentials
+
+| Role       | Email                    | Password   |
+|------------|--------------------------|------------|
+| Admin      | admin@helpdesk.com       | Admin@1234 |
+| Supervisor | supervisor@helpdesk.com  | Super@1234 |
+| Agent      | agent@helpdesk.com       | Agent@1234 |
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT

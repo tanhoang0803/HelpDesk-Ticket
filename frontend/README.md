@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Helpdesk Ticketing — Frontend
 
-## Getting Started
+Next.js 14 frontend for the Helpdesk Ticketing System. Provides role-aware dashboards, ticket management, file attachments, and an analytics dashboard for Admin/Supervisor roles.
 
-First, run the development server:
+---
 
+## Tech Stack
+
+| Layer      | Technology                     |
+|------------|--------------------------------|
+| Framework  | Next.js 14 (App Router)        |
+| Styling    | Tailwind CSS                   |
+| State      | TanStack Query (server state)  |
+| Forms      | React Hook Form + Zod          |
+| Auth       | NextAuth.js                    |
+| Charts     | Recharts                       |
+| HTTP       | Axios                          |
+
+---
+
+## Local Development
+
+### Prerequisites
+- Backend running at `http://localhost:3001`
+
+### 1. Install dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure environment
+```bash
+cp .env.example .env.local
+# Edit .env.local if needed — defaults work with local backend
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Start dev server
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+App available at `http://localhost:3000`
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable | Description |
+|---|---|
+| `NEXTAUTH_URL` | Full URL of this app (e.g. `http://localhost:3000`) |
+| `NEXTAUTH_SECRET` | Random secret for NextAuth session encryption |
+| `NEXT_PUBLIC_API_URL` | Backend base URL (baked in at build time) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+├── app/
+│   ├── (auth)/              # Login page
+│   └── (dashboard)/
+│       ├── dashboard/        # Home — KPI cards + tickets table
+│       ├── tickets/          # Ticket list + detail + create
+│       └── admin/
+│           ├── analytics/    # Analytics dashboard (ADMIN|SUPERVISOR)
+│           ├── agents/       # Agent management (ADMIN)
+│           ├── departments/
+│           ├── categories/
+│           └── ticket-types/
+├── components/
+│   ├── analytics/            # 8 chart/table components (Recharts)
+│   ├── dashboard/            # DashboardStats + DashboardTicketsTable
+│   ├── tickets/              # TicketCard, TicketStatusBadge, TicketPriorityBadge
+│   ├── tracking/             # TrackingTimeline
+│   ├── attachments/          # AttachmentList + AttachmentUpload
+│   └── layout/               # Sidebar + Header
+├── hooks/
+│   ├── useTickets.ts
+│   ├── useAnalytics.ts       # 6 hooks (overview, volume, priority, dept, resolution, agent)
+│   ├── useAgents.ts
+│   └── useDepartments.ts
+├── services/
+│   ├── tickets.service.ts
+│   ├── analytics.service.ts
+│   └── agents.service.ts
+├── types/
+│   ├── ticket.types.ts
+│   ├── analytics.types.ts
+│   └── api.types.ts
+└── lib/
+    └── utils/
+        └── ticket-status.ts  # STATUS_COLORS, PRIORITY_COLORS, getTransitionsForRole()
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Key Design Decisions
+
+**Dashboard KPIs** — use 4 parallel `useTickets({ limit: 1 })` calls reading `meta.total` per status. This works for all roles (ADMIN through REQUESTER) because the tickets API applies role-based department filtering server-side. Do **not** replace with the analytics overview endpoint — that endpoint is ADMIN/SUPERVISOR only.
+
+**Status/Priority display** — always import from `lib/utils/ticket-status.ts`. Never hardcode status colors or labels inline.
+
+**Form typing** — use `z.input<typeof schema>` for React Hook Form `defaultValues`, not `z.infer<>`, to avoid resolver type mismatch errors.
+
+---
+
+## Production (Vercel)
+
+Deployed automatically on every push to `master`. Vercel reads `vercel.json` at the repo root to set `frontend/` as the root directory.
+
+Live URL: `https://help-desk-ticket-sss.vercel.app`
+
+---
+
+## Key Commands
+
+```bash
+npm run dev       # Dev server
+npm run build     # Production build
+npm run start     # Start production build
+npm run lint      # ESLint (does not block build)
+```
+
+---
+
+## License
+
+MIT
